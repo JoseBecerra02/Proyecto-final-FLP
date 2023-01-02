@@ -175,13 +175,7 @@
       (variable-exp (vars vals body) (creacion-variable vars vals body env))
       (constante-exp (vars vals body) (creacion-constante vars vals body env))
       
-      (txt-exp (text) (creacion-texto text env))
-      (lit-exp (num) num)
-
-      (list-exp (list) (creacion-listas list env))
-
-      (primapp-bin-exp (num1 prim num2)
-                    (apply-primitive prim (cons (eval-rand num1 env) (cons (eval-rand num2 env) '()))))
+   
       
       (primapp-un-exp (prim num)
                    (apply-primitive-un prim (eval-rand num env)))
@@ -322,17 +316,7 @@
     )
   )
 
-(define creacion-variable
-  (lambda (vars vals body env)
-    (eval-expression body (map (lambda (var) (env var)) vars) (creacion-listas vals env) env)
-    )
-  )
-
-(define creacion-constante
-  (lambda (vars vals body env)
-    (eval-expression body (map (lambda (var) (env var)) vars) (creacion-listas vals env) env)
-    )
-  )
+)
 
 (define creacion-texto
   (lambda (txt env)
