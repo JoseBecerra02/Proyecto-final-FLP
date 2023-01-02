@@ -4,7 +4,7 @@
 ; Natalia Andrea Marín Hernandez - 2041622
 ; Esteban Andres Hernandez - 2042817
 ; Juan Esteban Brand Tovar - 2043291
-; Link github: https://github.com/JoseBecerra02/Taller3-FLP.git
+; Link github: https://github.com/JoseBecerra02/Proyecto-final-FLP
 
 ;<programa> :=  <expresion>
 ;               un-programa (exp)
@@ -33,63 +33,107 @@
 ;Especificación Léxica
 
 (define scanner-spec-simple-interpreter
-'((white-sp
-   (whitespace) skip)
-  (comment
-   ("%" (arbno (not #\newline))) skip)
-  (identifier
-   (letter (arbno (or letter digit))) symbol)
-  (number
-   (digit (arbno digit)) number)
-  (number
-   ("-" digit (arbno digit)) number)
-  (number
-   (digit (arbno digit) "." digit (arbno digit)) number)
-  (number
-   ("-" digit (arbno digit) "." digit (arbno digit)) number)
-  (text
-   ("'" (arbno (or digit letter)) "'") string)
-
+  
+'((white-sp (whitespace) skip)
+  
+  (comment (";" (arbno (not #\newline))) skip)
+  
+  (identifier (letter (arbno (or letter digit))) symbol)
+  
+  (number (digit (arbno digit)) number)
+  
+  (number ("-" digit (arbno digit)) number)
+  
+  (number (digit (arbno digit) "." digit (arbno digit)) number)
+  
+  (number ("-" digit (arbno digit) "." digit (arbno digit)) number)
+  
+  (text ("'" (arbno (or digit letter whitespace)) "'") string)
+  
  )
 )
 
 ;Especificación Sintáctica (gramática)
 
 (define grammar-simple-interpreter
+
   '((program (expression) a-program)
-    (expression (text) txt-exp)
-    (expression (number) lit-exp)
-    (expression (identifier) var-exp)
+    
+    ;;Declarar variables y constantes
+    ;;(expression ("var" (separated-list identifier "=" expression ",") "in" expression) variable-exp)
+    ;;(expression ("const" (separated-list identifier "=" expression ",") "in" expression) constante-exp)
 
     
-    (expression
-     ("(" expression primitive expression ")")
-     primapp-bin-exp)
-    (expression
-     (primitive-un "(" expression ")")
-     primapp-un-exp)
+    ;;Identificador 
+    (expression (identifier) var-exp)
+
+
+    ;;Valores
+    (expression (number) lit-exp)
+    (expression (text) txt-exp)
+    
+
+    ;;Booleanos
+    (expression (expr-bool) boolean-exp)
+
+    (expr-bool (boolean) booleano)
+    (expr-bool (oper-un-bool "(" expression")") una-bool-exp)
+    (expr-bool (oper-bin-bool "(" expression "," expression")") bin-bool-exp)
+    (expr-bool (pred-prim "(" expression "," expression ")") pred-bool-exp)
+
+    (boolean ("true") true->boolean)
+    (boolean ("false") false->boolean)
+
+    (oper-un-bool ("not") not-bool-prim)
+
+    (oper-bin-bool ("or")  or-bool-prim)
+    (oper-bin-bool ("and") and-bool-prim)
+
+    (pred-prim ("<") less-prim)
+    (pred-prim (">") more-prim)
+    (pred-prim ("==") equal-prim)
+    (pred-prim ("<>") unequal-prim)
+    (pred-prim (">=") more-equal-prim)
+    (pred-prim ("<=") less-equal-prim)
+
+    
+    (expression ("(" expression primitive expression ")") primapp-bin-exp)
+    (expression (primitive-un "(" expression ")") primapp-un-exp)
    
+    ;;Primitivas aritmeticas para enteros
     (primitive ("+") primitiva-suma)
     (primitive ("~") primitiva-resta)
     (primitive ("*") primitiva-multi)
     (primitive ("/") primitiva-div)
+    ;;(primitive ("add1") primitiva-add1)
+    ;;(primitive ("sub1") primitiva-sub1)
+    
     (primitive ("concat") primitiva-concat)
+    
     ;;Primitivas unitarias
     (primitive-un ("longitud") primitiva-longitud)
     (primitive-un ("add1") primitiva-add1)
     (primitive-un ("sub1") primitiva-sub1)
     (primitive-un ("cero") primitiva-cero)
-    ; características adicionales
-    (expression ("Si" expression "entonces" expression "sino" expression "finSI")
-                condicional-exp)
-    (expression ("declarar" "(" identifier "=" expression (arbno ";" identifier "=" expression) ")" "{" expression "}")
-                variableLocal-exp)
-    (expression ("procedimiento" "(" (separated-list identifier ",") ")" "haga" expression "finProc")
-               procedimiento-ex)
-    (expression ("evaluar" expression "("(separated-list expression ",") ")" "finEval") app-exp)
-    (expression ("declararRec" "(" (separated-list identifier "(" (separated-list identifier ",") ")" "=" expression ";") ")"  "{" expression "}")
-               recur-exp)
-    ))
+
+    
+    ;;Lista
+    (expression ("[" (separated-list expression ",") "]") list-exp)
+
+    
+    ;;Características adicionales
+    (expression ("if" expression "then" expression "[" "else" expression "]" "end") condicional-exp)
+
+    
+   
+    ;;(expression ("declararRec" "(" (separated-list identifier "(" (separated-list identifier ",") ")" "=" expression ";") ")"  "{" expression "}")
+               ;;recur-exp)
+
+    
+
+    
+    )
+  )
 
 ;Construidos automáticamente:
 
@@ -114,11 +158,7 @@
 ;El Interpretador (FrontEnd + Evaluación + señal para lectura )
 
 (define interpretador
-  (sllgen:make-rep-loop  "--> "
-    (lambda (pgm) (eval-program  pgm)) 
-    (sllgen:make-stream-parser 
-      scanner-spec-simple-interpreter
-      grammar-simple-interpreter)))
+  (sllgen:make-rep-loop  "--> " (lambda (pgm) (eval-program  pgm))(sllgen:make-stream-parser scanner-spec-simple-interpreter grammar-simple-interpreter)))
 
 ;*******************************************************************************************
 ;El Interprete
@@ -130,7 +170,10 @@
   (lambda (pgm)
     (cases program pgm
       (a-program (body)
-                 (eval-expression body (init-env))))))
+                 (eval-expression body (init-env)))
+      )
+    )
+  )
 
 ; Ambiente inicial
 ;(define init-env
@@ -141,45 +184,47 @@
 ;     (empty-env))))
 (define init-env
   (lambda ()
-    (extend-env
-     '(@a @b @c @d @e)
-     '(1 2 3 "hola" "FLP")
-     (empty-env))))
+    (extend-env '() '()
+     (empty-env)
+     )
+    )
+  )
 
 ;eval-expression: <expression> <enviroment> -> numero
 ; evalua la expresión en el ambiente de entrada
 (define eval-expression
   (lambda (exp env)
     (cases expression exp
-      (txt-exp (text) (apply string-append (reverse (cdr (reverse (cdr (map string (string->list text))))))))
-      (lit-exp (datum) datum)
+
       (var-exp (id) (apply-env env id))
+      
+      ;;(variable-exp (vars vals body) (creacion-variable vars vals body env))
+      ;;(constante-exp (vars vals body) (creacion-constante vars vals body env))
+      
+      (txt-exp (text) (creacion-texto text env))
+      (lit-exp (num) num)
+      
+      (boolean-exp (expres-bol) (creacion-bool expres-bol env))            
+
+      (list-exp (list) (creacion-listas list env))
+
       (primapp-bin-exp (num1 prim num2)
                     (apply-primitive prim (cons (eval-rand num1 env) (cons (eval-rand num2 env) '()))))
+      
       (primapp-un-exp (prim num)
                    (apply-primitive-un prim (eval-rand num env)))
+      
       (condicional-exp (test-exp true-exp false-exp)
               (if (true-value? (eval-expression test-exp env))
                   (eval-expression true-exp env)
                   (eval-expression false-exp env)))
-      (variableLocal-exp (id rand ids rands body)
-               (let* ((rando (cons rand rands))
-                 (ides (cons id ids))
-                 (args (eval-rands rando env)))
-                 (eval-expression body
-                                  (extend-env ides args env))))
-      (procedimiento-ex (ids body) (cerradura ids body env))
-      (app-exp (rator rands)
-               (let ((proc (eval-expression rator env))
-                     (args (eval-rands rands env)))
-                 (if (procVal? proc)
-                     (apply-procedure proc args)
-                     (eopl:error 'eval-expression
-                                 "Attempt to apply non-procedure ~s" proc))))
-      (recur-exp (procs idss bodies principalBody)
-                 (eval-expression principalBody
-                              (extend-env-recursively procs idss bodies env)))
-      )))
+      
+      ;;(recur-exp (procs idss bodies principalBody)
+                 ;;(eval-expression principalBody
+                              ;;(extend-env-recursively procs idss bodies env))
+      )
+    )
+  )
   
 ; funciones auxiliares para aplicar eval-expression a cada elemento de una 
 ; lista de operandos (expresiones)
@@ -299,16 +344,83 @@
 ; funciones auxiliares para encontrar la posición de un símbolo
 ; en la lista de símbolos de unambiente
 
-(define calcularHexa
-  (lambda (base Lista)
-    (Lista)
+(define true?
+  (lambda (x)
+    (equal? x 'true)
+  )
+)
+
+(define creacion-variable
+  (lambda (vars vals body env)
+    (eval-expression body (map (lambda (var) (env var)) vars) (creacion-listas vals env) env)
     )
   )
 
+(define creacion-constante
+  (lambda (vars vals body env)
+    (eval-expression body (map (lambda (var) (env var)) vars) (creacion-listas vals env) env)
+    )
+  )
+
+(define creacion-texto
+  (lambda (txt env)
+    (apply string-append (reverse (cdr (reverse (cdr (map string (string->list txt)))))))
+    )
+  )
+
+(define creacion-bool
+  (lambda (expression env)
+    (cases  expr-bool expression
+      (booleano (bool)
+                (cases boolean bool
+                  (true->boolean () 'true)
+                  (false->boolean () 'false)
+                  )
+                )
+      (una-bool-exp (unary-prim bool-exp)
+                    (cases oper-un-bool unary-prim
+                      (not-bool-prim () (if (true? (eval-expression bool-exp env)) 'false 'true))
+                      )
+                    )
+      (bin-bool-exp (pred first-expr second-expr)
+                    (cases oper-bin-bool pred
+                      (and-bool-prim () (if (and (true? (eval-expression first-expr env)) (true? (eval-expression second-expr env))) 'true 'false))
+                      (or-bool-prim () (if (or  (true? (eval-expression first-expr env)) (true? (eval-expression second-expr env))) 'true 'false))
+                      )
+                    )
+      (pred-bool-exp (pred first-expr second-expr)
+                     (cases pred-prim pred
+                       (less-prim () (if (< (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
+                       (more-prim () (if (> (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
+                       (more-equal-prim () (if (>= (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
+                       (less-equal-prim () (if (<= (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
+                       (equal-prim () (if (equal? (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
+                       (unequal-prim () (if (not (equal? (eval-expression first-expr env) (eval-expression second-expr env))) 'true 'false))
+                       )
+                     )
+      )
+    )
+  )
+
+
+(define creacion-listas
+  (lambda (exprs env)
+    (cond
+      ((null? exprs) empty)
+      (else
+       (cons (eval-expression (car exprs) env) (creacion-listas (cdr exprs) env))
+       )
+      )
+    )
+  )
+
+                                                                   
   
 (define list-find-position
   (lambda (sym los)
-    (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
+    (list-index (lambda (sym1) (eqv? sym1 sym)) los)
+    )
+  )
 
 (define list-index
   (lambda (pred ls)
@@ -318,6 +430,9 @@
       (else (let ((list-index-r (list-index pred (cdr ls))))
               (if (number? list-index-r)
                 (+ list-index-r 1)
-                #f))))))
+                #f)))
+      )
+    )
+  )
 
 (interpretador)
