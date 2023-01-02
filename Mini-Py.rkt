@@ -96,7 +96,21 @@
     (pred-prim (">=") more-equal-prim)
     (pred-prim ("<=") less-equal-prim)
 
-    
+
+     ;;Lista
+    (expression ("[" (separated-list expression ",") "]") list-exp)
+
+
+    ;;Tupla
+    (expression ("tupla" "[" expression "," expression "]") tupla-exp)
+
+
+    ;;Registro
+    (expression ("{" (separated-list identifier "=" expression ",") "}")  registro-exp)
+
+
+
+    ;;Prima
     (expression ("(" expression primitive expression ")") primapp-bin-exp)
     (expression (primitive-un "(" expression ")") primapp-un-exp)
    
@@ -115,21 +129,12 @@
     (primitive-un ("add1") primitiva-add1)
     (primitive-un ("sub1") primitiva-sub1)
     (primitive-un ("cero") primitiva-cero)
-
-    
-    ;;Lista
-    (expression ("[" (separated-list expression ",") "]") list-exp)
-
     
     ;;Características adicionales
     (expression ("if" expression "then" expression "[" "else" expression "]" "end") condicional-exp)
-
-    
    
     ;;(expression ("declararRec" "(" (separated-list identifier "(" (separated-list identifier ",") ")" "=" expression ";") ")"  "{" expression "}")
                ;;recur-exp)
-
-    
 
     
     )
@@ -207,6 +212,10 @@
       (boolean-exp (expres-bol) (creacion-bool expres-bol env))            
 
       (list-exp (list) (creacion-listas list env))
+
+      (tupla-exp (exp1 exp2) (creacion-tuplas exp1 exp2 env))
+
+      (registro-exp  (identificadores registros) (creacion-registros identificadores registros env))
 
       (primapp-bin-exp (num1 prim num2)
                     (apply-primitive prim (cons (eval-rand num1 env) (cons (eval-rand num2 env) '()))))
@@ -368,6 +377,43 @@
     )
   )
 
+
+(define creacion-listas
+  (lambda (expre env)
+    (cond
+      ((null? expre) empty)
+      (else
+       (cons (eval-expression (car expre) env) (creacion-listas (cdr expre) env))
+       )
+      )
+    )
+  )
+
+
+(define creacion-tuplas
+  (lambda (expre1 expre2 env)
+    (cond
+      ((null? expre1) empty)
+      (else
+       (cons (eval-expression expre1 env) (eval-expression expre2 env))
+       )
+      )
+    )
+  )
+
+
+(define creacion-registros
+  (lambda (identi expre env)
+    (cond
+      ((null? expre) empty)
+      (else
+       (cons (append (list (car identi) '=) (cons (eval-expression (car expre) env) empty)) (creacion-registros (cdr identi) (cdr expre) env))
+       )
+      )
+    )
+  )
+
+
 (define creacion-bool
   (lambda (expression env)
     (cases  expr-bool expression
@@ -392,29 +438,15 @@
                      (cases pred-prim pred
                        (less-prim () (if (< (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
                        (more-prim () (if (> (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
-                       (more-equal-prim () (if (>= (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
-                       (less-equal-prim () (if (<= (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
                        (equal-prim () (if (equal? (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
                        (unequal-prim () (if (not (equal? (eval-expression first-expr env) (eval-expression second-expr env))) 'true 'false))
-                       ) 
+                       (more-equal-prim () (if (>= (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
+                       (less-equal-prim () (if (<= (eval-expression first-expr env) (eval-expression second-expr env)) 'true 'false))
+                       )
                      )
       )
     )
-  )
-
-
-(define creacion-listas
-  (lambda (exprs env)
-    (cond
-      ((null? exprs) empty)
-      (else
-       (cons (eval-expression (car exprs) env) (creacion-listas (cdr exprs) env))
-       )
-      )
-    )
-  )
-
-                                                                   
+  )                                                                
   
 (define list-find-position
   (lambda (sym los)
