@@ -59,10 +59,7 @@
 
   '((program (expression) a-program)
     
-    ;;Declarar variables y constantes
-    (expression ("var" (separated-list identifier "=" expression ",") "in" expression) variable-exp)
-
-    (expression ("const" (separated-list identifier "=" expression ",") "in" expression) constante-exp)
+  
 
     
 
