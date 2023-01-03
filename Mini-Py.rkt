@@ -60,8 +60,8 @@
   '((program (expression) a-program)
     
     ;;Declarar variables y constantes
-    ;;(expression ("var" (separated-list identifier "=" expression ",") "in" expression) variable-exp)
-    ;;(expression ("const" (separated-list identifier "=" expression ",") "in" expression) constante-exp)
+    (expression ("var" (separated-list identifier "=" expression ",") "in" expression) variable-exp)
+    (expression ("const" (separated-list identifier "=" expression ",") "in" expression) constante-exp)
 
     
     ;;Identificador 
@@ -130,9 +130,17 @@
     (primitive-un ("sub1") primitiva-sub1)
     (primitive-un ("cero") primitiva-cero)
     
-    ;;Características adicionales
+
+    ;;Estructura begin
+
+    
+    
+    ;;Estructura if 
     (expression ("if" expression "then" expression "[" "else" expression "]" "end") condicional-exp)
-   
+
+
+
+    
     ;;(expression ("declararRec" "(" (separated-list identifier "(" (separated-list identifier ",") ")" "=" expression ";") ")"  "{" expression "}")
                ;;recur-exp)
 
@@ -203,13 +211,13 @@
 
       (var-exp (id) (apply-env env id))
       
-      ;;(variable-exp (vars vals body) (creacion-variable vars vals body env))
-      ;;(constante-exp (vars vals body) (creacion-constante vars vals body env))
+      (variable-exp (vars vals body) (creacion-variable vars vals body env))
+      (constante-exp (vars vals body) (creacion-constante vars vals body env))
       
       (txt-exp (text) (creacion-texto text env))
       (lit-exp (num) num)
       
-      (boolean-exp (expres-bol) (creacion-bool expres-bol env))            
+      (boolean-exp (expres-bool) (creacion-bool expres-bool env))            
 
       (list-exp (list) (creacion-listas list env))
 
@@ -217,23 +225,24 @@
 
       (registro-exp  (identificadores registros) (creacion-registros identificadores registros env))
 
-      (primapp-bin-exp (num1 prim num2)
-                    (apply-primitive prim (cons (eval-rand num1 env) (cons (eval-rand num2 env) '()))))
+      (primapp-bin-exp (num1 prim num2) (apply-primitive prim (cons (eval-rand num1 env) (cons (eval-rand num2 env) '()))))
       
-      (primapp-un-exp (prim num)
-                   (apply-primitive-un prim (eval-rand num env)))
+      (primapp-un-exp (prim num) (apply-primitive-un prim (eval-rand num env)))
       
-      (condicional-exp (test-exp true-exp false-exp)
-              (if (true-value? (eval-expression test-exp env))
-                  (eval-expression true-exp env)
-                  (eval-expression false-exp env)))
+      (condicional-exp (test-exp true-exp false-exp) (creacion-if test-exp true-exp false-exp env))
+      
+    
       
       ;;(recur-exp (procs idss bodies principalBody)
                  ;;(eval-expression principalBody
                               ;;(extend-env-recursively procs idss bodies env))
+
       )
+
     )
+
   )
+  
   
 ; funciones auxiliares para aplicar eval-expression a cada elemento de una 
 ; lista de operandos (expresiones)
@@ -447,7 +456,35 @@
       )
     )
   )                                                                
-  
+
+
+(define creacion-begin
+  (lambda (test-exp true-exp false-exp env)
+    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+    )
+  )
+
+
+(define creacion-if
+  (lambda (test-exp true-exp false-exp env)
+    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+    )
+  )
+
+(define creacion-while
+  (lambda (test-exp true-exp false-exp env)
+    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+    )
+  )
+
+(define creacion-for
+  (lambda (test-exp true-exp false-exp env)
+    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+    )
+  )
+
+
+
 (define list-find-position
   (lambda (sym los)
     (list-index (lambda (sym1) (eqv? sym1 sym)) los)
