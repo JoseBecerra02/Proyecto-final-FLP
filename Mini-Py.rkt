@@ -109,11 +109,11 @@
     (expression ("{" (separated-list identifier "=" expression ",") "}")  registro-exp)
 
 
-
     ;;Prima
     (expression ("(" expression primitive expression ")") primapp-bin-exp)
     (expression (primitive-un "(" expression ")") primapp-un-exp)
-   
+
+    
     ;;Primitivas aritmeticas para enteros
     (primitive ("+") primitiva-suma)
     (primitive ("~") primitiva-resta)
@@ -123,6 +123,7 @@
     ;;(primitive ("sub1") primitiva-sub1)
     
     (primitive ("concat") primitiva-concat)
+
     
     ;;Primitivas unitarias
     (primitive-un ("longitud") primitiva-longitud)
@@ -132,11 +133,15 @@
     
 
     ;;Estructura begin
-
+    (expression ("begin" "{" expression (arbno "," expression) "}" "end")  begin-exp)
     
     
     ;;Estructura if 
     (expression ("if" expression "then" expression "[" "else" expression "]" "end") condicional-exp)
+    
+    
+    ;;Estructura while 
+    (expression ("while" expression "do" expression "done") while-exp)
 
 
 
@@ -197,7 +202,7 @@
 ;     (empty-env))))
 (define init-env
   (lambda ()
-    (extend-env '() '()
+    (extend-env '(a) '(2)
      (empty-env)
      )
     )
@@ -230,8 +235,10 @@
       (primapp-un-exp (prim num) (apply-primitive-un prim (eval-rand num env)))
       
       (condicional-exp (test-exp true-exp false-exp) (creacion-if test-exp true-exp false-exp env))
-      
-    
+
+      (begin-exp (exp exps) (creacion-begin exp exps env))
+
+      (while-exp (exp-cond exp-do) (creacion-while exp-cond exp-do env))
       
       ;;(recur-exp (procs idss bodies principalBody)
                  ;;(eval-expression principalBody
@@ -459,8 +466,8 @@
 
 
 (define creacion-begin
-  (lambda (test-exp true-exp false-exp env)
-    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+  (lambda (exp exps env)
+     (if (null? exps) (eval-expression exp env) (begin (eval-expression exp env) (creacion-begin (car exps) (cdr exps) env)))
     )
   )
 
@@ -472,8 +479,8 @@
   )
 
 (define creacion-while
-  (lambda (test-exp true-exp false-exp env)
-    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+  (lambda (exp-cond exp-do env)
+    (if (true? (eval-expression exp-cond env)) (begin (eval-expression exp-do env) (creacion-while exp-cond exp-do env)) 'done)
     )
   )
 
