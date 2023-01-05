@@ -49,7 +49,8 @@
   (number ("-" digit (arbno digit) "." digit (arbno digit)) number)
   
   (text ("'" (arbno (or digit letter whitespace)) "'") string)
-  
+
+  (base ("x" (arbno whitespace) digit (arbno digit)) string)  
  )
 )
 
@@ -71,7 +72,11 @@
     ;;Valores
     (expression (number) lit-exp)
     (expression (text) txt-exp)
-    
+
+
+    ;;Hexadecimal
+    (expression (base "(" (arbno expression) ")") hexa-exp)
+
 
     ;;Booleanos
     (expression (expr-bool) boolean-exp)
@@ -142,6 +147,12 @@
     
     ;;Estructura while 
     (expression ("while" expression "do" expression "done") while-exp)
+    
+    
+    ;;Estructura for
+    (expression ("for" identifier "=" expression to-down-exp expression "do" expression "done") for-exp)
+    (to-down-exp ("to") to-exp)
+    (to-down-exp ("down") down-exp)
 
 
 
@@ -221,9 +232,11 @@
       
       (txt-exp (text) (creacion-texto text env))
       (lit-exp (num) num)
-      
-      (boolean-exp (expres-bool) (creacion-bool expres-bool env))            
 
+      (hexa-exp (base lista) (creacion-hexa base lista env))
+      
+      (boolean-exp (expres-bool) (creacion-bool expres-bool env))
+       
       (list-exp (list) (creacion-listas list env))
 
       (tupla-exp (exp1 exp2) (creacion-tuplas exp1 exp2 env))
@@ -239,6 +252,8 @@
       (begin-exp (exp exps) (creacion-begin exp exps env))
 
       (while-exp (exp-cond exp-do) (creacion-while exp-cond exp-do env))
+      
+      (for-exp (ident exp-cond to-down-exp exp-cond-final exp-do) (creacion-for ident exp-cond to-down-exp exp-cond-final exp-do env))
       
       ;;(recur-exp (procs idss bodies principalBody)
                  ;;(eval-expression principalBody
@@ -394,6 +409,26 @@
   )
 
 
+(define creacion-hexa
+  (lambda (base lista env)
+    (list (creacion-listas lista env) 'in 'base (string->symbol (remove-spaces (string->list base))))
+    )
+  )
+
+
+(define remove-spaces
+  (lambda (l)
+    (if  (null? l)
+         ""
+        (if (eqv? (car l) #\space)
+        (remove-spaces (cdr l))
+        (string-append (make-string 1 (car l)) (remove-spaces (cdr l)))
+        )
+     )
+    )
+  )
+
+
 (define creacion-listas
   (lambda (expre env)
     (cond
@@ -474,7 +509,7 @@
 
 (define creacion-if
   (lambda (test-exp true-exp false-exp env)
-    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+    (if (or (equal? 'true (eval-expression test-exp env)) (equal? 'false (eval-expression test-exp env))) (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env)) (eopl:error "No binding for boolean"))
     )
   )
 
@@ -485,11 +520,10 @@
   )
 
 (define creacion-for
-  (lambda (test-exp true-exp false-exp env)
-    (if (true? (eval-expression test-exp env)) (eval-expression true-exp env) (eval-expression false-exp env))
+  (lambda (ident exp-cond exp-cond-final exp-do env)
+    (0)
     )
   )
-
 
 
 (define list-find-position
