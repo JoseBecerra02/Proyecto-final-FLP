@@ -124,17 +124,24 @@
     (primitive ("~") primitiva-resta)
     (primitive ("*") primitiva-multi)
     (primitive ("/") primitiva-div)
-    ;;(primitive ("add1") primitiva-add1)
-    ;;(primitive ("sub1") primitiva-sub1)
-    
-    (primitive ("concat") primitiva-concat)
-
-    
-    ;;Primitivas unitarias
-    (primitive-un ("longitud") primitiva-longitud)
     (primitive-un ("add1") primitiva-add1)
     (primitive-un ("sub1") primitiva-sub1)
-    (primitive-un ("cero") primitiva-cero)
+
+
+    ;;Primitivas para hexadecimales
+
+
+
+    ;;Primitivas sobre cadenas
+    (primitive-un ("longitud") primitiva-longitud)
+    (primitive ("concat") primitiva-concat)
+    
+
+
+    ;;Primitivas sobre listas
+    (primitive-un ("vacio?") primitiva-vacio?)
+    (expression ("vacio") primitiva-vacio)
+    (expression ("crear-lista" "(" (separated-list expression ",") ")") primitiva-crear-lista)
     
 
     ;;Estructura begin
@@ -155,8 +162,6 @@
     (to-down-exp ("down") down-exp)
 
 
-
-    
     ;;(expression ("declararRec" "(" (separated-list identifier "(" (separated-list identifier ",") ")" "=" expression ";") ")"  "{" expression "}")
                ;;recur-exp)
 
@@ -246,6 +251,10 @@
       (primapp-bin-exp (num1 prim num2) (apply-primitive prim (cons (eval-rand num1 env) (cons (eval-rand num2 env) '()))))
       
       (primapp-un-exp (prim num) (apply-primitive-un prim (eval-rand num env)))
+
+      (primitiva-vacio () '())
+
+      (primitiva-crear-lista (num) (creacion-listas num env))
       
       (condicional-exp (test-exp true-exp false-exp) (creacion-if test-exp true-exp false-exp env))
 
@@ -299,9 +308,10 @@
       (primitiva-longitud () (string-length num))
       (primitiva-add1 () (+ num 1))
       (primitiva-sub1 () (- num 1))
-      (primitiva-cero () (zero? num))
+      (primitiva-vacio? () (null? num))
      ))
     )
+
 
 ;true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
 (define true-value?
