@@ -135,13 +135,16 @@
     ;;Primitivas sobre cadenas
     (primitive-un ("longitud") primitiva-longitud)
     (primitive ("concat") primitiva-concat)
-    
 
 
     ;;Primitivas sobre listas
     (primitive-un ("vacio?") primitiva-vacio?)
     (expression ("vacio") primitiva-vacio)
     (expression ("crear-lista" "(" (separated-list expression ",") ")") primitiva-crear-lista)
+    (primitive-un ("lista?") primitiva-lista?)
+    (primitive-un ("cabeza") primitiva-cabeza)
+    (primitive-un ("cola") primitiva-cola)
+    (primitive ("append") primitiva-append)
     
 
     ;;Estructura begin
@@ -299,6 +302,7 @@
       (primitiva-multi () (* (car num) (cadr num)))
       (primitiva-div () (/ (car num) (cadr num)))
       (primitiva-concat () (string-append (car num)(cadr num)))
+      (primitiva-append () (append (car num) (cadr num)))
       )
     ))
     
@@ -309,8 +313,12 @@
       (primitiva-add1 () (+ num 1))
       (primitiva-sub1 () (- num 1))
       (primitiva-vacio? () (null? num))
-     ))
+      (primitiva-lista? () (list? num))
+      (primitiva-cabeza () (car num))
+      (primitiva-cola () (car (reverse num)))
+      )
     )
+  )
 
 
 ;true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
