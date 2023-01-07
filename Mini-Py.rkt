@@ -145,6 +145,8 @@
     (primitive-un ("cabeza") primitiva-cabeza)
     (primitive-un ("cola") primitiva-cola)
     (primitive ("append") primitiva-append)
+    (expression ("ref-list" "(" expression "," number ")") primitiva-ref-list)
+    (primitive-un ("set-list") primitiva-set-list)
     
 
     ;;Estructura begin
@@ -258,6 +260,8 @@
       (primitiva-vacio () '())
 
       (primitiva-crear-lista (num) (creacion-listas num env))
+
+      (primitiva-ref-list (num index) (list-set-aux (eval-expression num env) index))
       
       (condicional-exp (test-exp true-exp false-exp) (creacion-if test-exp true-exp false-exp env))
 
@@ -276,7 +280,7 @@
     )
 
   )
-  
+
   
 ; funciones auxiliares para aplicar eval-expression a cada elemento de una 
 ; lista de operandos (expresiones)
@@ -303,6 +307,7 @@
       (primitiva-div () (/ (car num) (cadr num)))
       (primitiva-concat () (string-append (car num)(cadr num)))
       (primitiva-append () (append (car num) (cadr num)))
+      
       )
     ))
     
@@ -316,9 +321,11 @@
       (primitiva-lista? () (list? num))
       (primitiva-cabeza () (car num))
       (primitiva-cola () (car (reverse num)))
+      (primitiva-set-list () (set-list num))
       )
     )
   )
+
 
 
 ;true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
@@ -542,6 +549,29 @@
     (0)
     )
   )
+
+(define list-set-aux
+  (lambda (L n)
+    (cond
+      [(= 0 n) (car L)]
+      [else (list-set-aux (cdr L) (- n 1))]
+      )
+    )
+  )
+
+(define (set-list num)
+  (cond
+    ((null? num) num)
+    ((miembro? (car num) (cdr num)) (set-list (cdr num)))
+    (else (cons (car num) (set-list (cdr num)))))
+  )
+
+(define (miembro? x Lista1)
+  (if (null? Lista1)
+      #f
+      (if (eq? x (car Lista1))
+          #t
+          (miembro? x (cdr Lista1)))))
 
 
 (define list-find-position
