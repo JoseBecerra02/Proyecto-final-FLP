@@ -77,6 +77,8 @@
     ;;Hexadecimal
     (expression (base "(" (arbno expression) ")") hexa-exp)
 
+    ;; ASIGNACION DE VARIABLES
+    (expression ("set" identifier "=" expression) set-exp)
 
     ;;Booleanos
     (expression (expr-bool) boolean-exp)
@@ -86,8 +88,11 @@
     (expr-bool (oper-bin-bool "(" expression "," expression")") bin-bool-exp)
     (expr-bool (pred-prim "(" expression "," expression ")") pred-bool-exp)
 
-    (boolean ("true") true->boolean)
-    (boolean ("false") false->boolean)
+    ;;Print
+    (expression ("print("expression")") print-exp)
+    
+    (boolean ("true") true-boolean)
+    (boolean ("false") false-boolean)
 
     (oper-un-bool ("not") not-bool-prim)
 
@@ -127,11 +132,6 @@
     (primitive-un ("add1") primitiva-add1)
     (primitive-un ("sub1") primitiva-sub1)
 
-
-    ;;Primitivas para hexadecimales
-
-
-
     ;;Primitivas sobre cadenas
     (primitive-un ("longitud") primitiva-longitud)
     (primitive ("concat") primitiva-concat)
@@ -140,6 +140,19 @@
 
     ;;Primitivas sobre listas
     (primitive-un ("vacio?") primitiva-vacio?)
+    (expression ("vacio") primitiva-vacio)
+    (expression ("crear-lista" "(" (separated-list expression ",") ")") primitiva-crear-lista)
+    (primitive-un ("lista?") primitiva-lista?)
+    (primitive-un ("cabeza") primitiva-cabeza)
+    (primitive-un ("cola") primitiva-cola)
+    (primitive ("append") primitiva-append)
+    (expression ("ref-list" "(" expression "," number ")") primitiva-ref-list)
+    (primitive-un ("set-list") primitiva-set-list)
+
+    ;;Primitivas sobre tuplas
+    (expression ("crear-tupla" "(" expression "," expression ")") primitiva-crear-tupla)
+    (primitive-un ("tupla?") primitiva-tupla?)
+    (expression ("ref-tupla" "(" expression "," number ")") primitiva-ref-tuple)
     
 
     ;;Estructura begin
@@ -158,15 +171,6 @@
     (expression ("for" identifier "=" expression to-down-exp expression "do" expression "done") for-exp)
     (to-down-exp ("to") to-exp)
     (to-down-exp ("down") down-exp)
-
-
-
-        
-
-    (primitive-un ("cero") primitiva-cero)
-    ;;(expression ("declararRec" "(" (separated-list identifier "(" (separated-list identifier ",") ")" "=" expression ";") ")"  "{" expression "}")
-               ;;recur-exp)
-
     
     )
   )
@@ -211,16 +215,9 @@
     )
   )
 
-; Ambiente inicial
-;(define init-env
-;  (lambda ()
-;    (extend-env
-;     '(x y z)
-;     '(4 2 5)
-;     (empty-env))))
 (define init-env
   (lambda ()
-    (extend-env '(a) '(2)
+    (extend-env '() '()
      (empty-env)
      )
     )
@@ -235,24 +232,38 @@
       (var-exp (id) (apply-env env id))
       
       (variable-exp (vars vals body) (creacion-variable vars vals body env))
+      
       (constante-exp (vars vals body) (creacion-constante vars vals body env))
       
       (txt-exp (text) (creacion-texto text env))
+      
       (lit-exp (num) num)
 
       (hexa-exp (base lista) (creacion-hexa base lista env))
       
       (boolean-exp (expres-bool) (creacion-bool expres-bool env))
+
+      (print-exp (exp) (display  (eval-expression exp env)))
        
       (list-exp (list) (creacion-listas list env))
 
       (tupla-exp (exp1 exp2) (creacion-tuplas exp1 exp2 env))
 
-      (registro-exp  (identificadores registros) (creacion-registros identificadores registros env))
+      (registro-exp (identificadores registros) (creacion-registros identificadores registros env))
 
       (primapp-bin-exp (num1 prim num2) (apply-primitive prim (cons (eval-rand num1 env) (cons (eval-rand num2 env) '()))))
       
       (primapp-un-exp (prim num) (apply-primitive-un prim (eval-rand num env)))
+
+      (primitiva-vacio () '())
+
+      (primitiva-crear-lista (num) (creacion-listas num env))
+
+      (primitiva-ref-list (num index) (list-set-aux (eval-expression num env) index))
+
+      (primitiva-crear-tupla (exp1 exp2) (creacion-tuplas exp1 exp2 env))
+
+      (primitiva-ref-tuple (num index) (tupla-set-aux (eval-expression num env) index))
       
       (condicional-exp (test-exp true-exp false-exp) (creacion-if test-exp true-exp false-exp env))
 
@@ -261,11 +272,9 @@
       (while-exp (exp-cond exp-do) (creacion-while exp-cond exp-do env))
       
       (for-exp (ident exp-cond to-down-exp exp-cond-final exp-do) (creacion-for ident exp-cond to-down-exp exp-cond-final exp-do env))
-      
-      ;;(recur-exp (procs idss bodies principalBody)
-                 ;;(eval-expression principalBody
-                              ;;(extend-env-recursively procs idss bodies env))
 
+      (set-exp (id exp) (creacion-set id exp env))
+      
       )
 
     )
@@ -297,6 +306,7 @@
       (primitiva-multi () (* (car num) (cadr num)))
       (primitiva-div () (/ (car num) (cadr num)))
       (primitiva-concat () (string-append (car num)(cadr num)))
+      (primitiva-append () (append (car num) (cadr num)))
       )
     ))
     
@@ -306,8 +316,12 @@
       (primitiva-longitud () (string-length num))
       (primitiva-add1 () (+ num 1))
       (primitiva-sub1 () (- num 1))
-      (primitiva-cero () (zero? num))
       (primitiva-vacio? () (null? num))
+      (primitiva-lista? () (list? num))
+      (primitiva-cabeza () (car num))
+      (primitiva-cola () (cdr num))
+      (primitiva-set-list () (set-list num))
+      (primitiva-tupla? () (pair? num))
      ))
     )
 
@@ -323,14 +337,10 @@
 ;definición del tipo de dato ambiente
 (define-datatype environment environment?
   (empty-env-record)
-  (extended-env-record (syms (list-of symbol?))
-                       (vals (list-of scheme-value?))
-
+  (extended-env-record (vars (list-of variable?))
+                       (vec vector?)
                        (env environment?))
-  (recursively-extended-env-record (proc-names (list-of symbol?))
-                                   (idss (list-of (list-of symbol?)))
-                                   (bodies (list-of expression?))
-                                   (env environment?)))
+  )
 
 (define scheme-value? (lambda (v) #t))
 
@@ -349,6 +359,22 @@
       (cerradura (ids body env)
                (eval-expression body (extend-env ids args env))))))
 
+(define-datatype variable variable?
+  (mutable (id symbol?))
+  (inmutable (id symbol?))
+)
+
+(define-datatype target target?
+  (indirect-target (ref  target-ref-directo? ))
+)
+;; Crea una referencia, pos es la posicion de la referencia en el vector
+(define-datatype reference reference?
+  (refere (pos integer?)
+         (vec vector?)
+         (mutable symbol?)
+        )
+)
+
 ;empty-env:      -> enviroment
 ;función que crea un ambiente vacío
 (define empty-env  
@@ -359,33 +385,32 @@
 ;extend-env: <list-of symbols> <list-of numbers> enviroment -> enviroment
 ;función que crea un ambiente extendido
 (define extend-env
-  (lambda (syms vals env)
-    (extended-env-record syms vals env)))
+  (lambda (vars vals env)
+    (extended-env-record vars (list->vector vals) env)))
 
 (define extend-env-recursively
   (lambda (proc-names idss bodies old-env)
-    (recursively-extended-env-record
-     proc-names idss bodies old-env)))
-
-;función que busca un símbolo en un ambiente
+    (let ((len (length proc-names)))
+      (let ((vec (make-vector len)))
+        (let ((env (extended-env-record (map (lambda (id) (mutable id))proc-names) vec old-env)))
+          (for-each
+            (lambda (pos ids body)
+              (vector-set! vec pos (cerradura ids body env))
+            )
+            (numsCien len) idss bodies
+          )
+          env
+      )
+     )
+   )
+  )
+)
 
 (define apply-env
   (lambda (env sym)
-    (cases environment env
-      (empty-env-record ()
-                        (eopl:error 'empty-env "No binding for ~s" sym))
-      (extended-env-record (syms vals old-env)
-                           (let ((pos (list-find-position sym syms)))
-                             (if (number? pos)
-                                 (list-ref vals pos)
-                                 (apply-env old-env sym))))
-      (recursively-extended-env-record (proc-names idss bodies old-env)
-                                       (let ((pos (list-find-position sym proc-names)))
-                                         (if (number? pos)
-                                             (cerradura (list-ref idss pos)
-                                                      (list-ref bodies pos)
-                                                      env)
-                                             (apply-env old-env sym)))))))
+    (ref-val (apply-env-ref env sym))
+  )
+)
 
 ;****************************************************************************************
 ;Funciones Auxiliares
@@ -401,14 +426,16 @@
 
 (define creacion-variable
   (lambda (vars vals body env)
-    (eval-expression body (map (lambda (var) (env var)) vars) (creacion-listas vals env) env)
-    )
+    (eval-expression body (extend-env (map (lambda (var) (mutable var)) vars )
+                                      (creacion-listas vals env) env) )
+  )
   )
 
 (define creacion-constante
   (lambda (vars vals body env)
-    (eval-expression body (map (lambda (var) (env var)) vars) (creacion-listas vals env) env)
-    )
+    (eval-expression body (extend-env (map (lambda (var) (inmutable var))vars)
+                                      (creacion-listas vals env) env))
+  )
   )
 
 (define creacion-texto
@@ -452,12 +479,7 @@
 
 (define creacion-tuplas
   (lambda (expre1 expre2 env)
-    (cond
-      ((null? expre1) empty)
-      (else
-       (cons (eval-expression expre1 env) (eval-expression expre2 env))
-       )
-      )
+    (cons (eval-expression expre1 env) (eval-expression expre2 env))
     )
   )
 
@@ -473,25 +495,23 @@
     )
   )
 
-
 (define creacion-bool
   (lambda (expression env)
     (cases  expr-bool expression
       (booleano (bool)
                 (cases boolean bool
-                  (true->boolean () 'true)
-                  (false->boolean () 'false)
+                  (true-boolean () 'true)
+                  (false-boolean () 'false)
                   )
                 )
       (una-bool-exp (unary-prim bool-exp)
                     (cases oper-un-bool unary-prim
-                      (not-bool-prim () (if (true? (eval-expression bool-exp env)) 'false 'true))
-                      )
+                      (not-bool-prim () (if (or (eqv? (eval-expression bool-exp env) 'true) (eqv? (eval-expression bool-exp env) 'false)) (if (true? (eval-expression bool-exp env)) 'false 'true) (eopl:error 'apply-env-ref "Estas comparando elementos no booleanos"))))
                     )
       (bin-bool-exp (pred first-expr second-expr)
                     (cases oper-bin-bool pred
-                      (and-bool-prim () (if (and (true? (eval-expression first-expr env)) (true? (eval-expression second-expr env))) 'true 'false))
-                      (or-bool-prim () (if (or  (true? (eval-expression first-expr env)) (true? (eval-expression second-expr env))) 'true 'false))
+                      (and-bool-prim () (if (or (eqv? (eval-expression first-expr env) 'true) (eqv? (eval-expression first-expr env) 'false)) (if (and (true? (eval-expression first-expr env)) (true? (eval-expression second-expr env))) 'true 'false) (eopl:error 'apply-env-ref "Estas comparando elementos no booleanos")))
+                      (or-bool-prim () (if (or (eqv? (eval-expression first-expr env) 'true) (eqv? (eval-expression first-expr env) 'false)) (if (or  (true? (eval-expression first-expr env)) (true? (eval-expression second-expr env))) 'true 'false) (eopl:error 'apply-env-ref "Estas comparando elementos no booleanos")))
                       )
                     )
       (pred-bool-exp (pred first-expr second-expr)
@@ -506,7 +526,7 @@
                      )
       )
     )
-  )                                                                
+  )
 
 
 (define creacion-begin
@@ -533,25 +553,181 @@
     (0)
     )
   )
+(define creacion-set
+  (lambda (id exp env)
+     (begin
+       (if  (mutable? id env)
+            (cases reference (apply-env-ref env id)
+              (refere (pos vals mut)  
+                  (if (target? (vector-ref vals pos))
+                    (cases target (vector-ref vals pos) 
+                      (indirect-target (ref)  (cambiarRef! ref (eval-expression exp env)))
+                    )
+                  (cambiarRef! (apply-env-ref env id) (eval-expression exp env))
+                )
+              )
+            )      
+            (eopl:error 'set-exp "Estas tratando de mdificar la constante ~s" id)
+       )
+       1
+     )
+  )
+)
 
-
-(define list-find-position
-  (lambda (sym los)
-    (list-index (lambda (sym1) (eqv? sym1 sym)) los)
+;;Aux
+(define list-set-aux
+  (lambda (L n)
+    (cond
+      [(= 0 n) (car L)]
+      [else (list-set-aux (cdr L) (- n 1))]
+      )
     )
   )
-
-(define list-index
-  (lambda (pred ls)
+(define tupla-set-aux
+  (lambda (L n)
     (cond
-      ((null? ls) #f)
-      ((pred (car ls)) 0)
-      (else (let ((list-index-r (list-index pred (cdr ls))))
-              (if (number? list-index-r)
-                (+ list-index-r 1)
-                #f)))
+      [(= 0 n) (car L)]
+      [(= 1 n) (cdr L)]
+      [else (eopl:error 'apply-env-ref "Estas accediendo a una posicion que no existe en la tupla")]
       )
     )
   )
 
+
+(define (set-list num)
+  (cond
+    ((null? num) num)
+    ((miembro? (car num) (cdr num)) (set-list (cdr num)))
+    (else (cons (car num) (set-list (cdr num)))))
+  )
+
+(define (miembro? x Lista1)
+  (if (null? Lista1)
+      #f
+      (if (eq? x (car Lista1))
+          #t
+          (miembro? x (cdr Lista1)))))
+
+(define mutable?
+  (lambda (sym env)
+      (cases environment env
+      (empty-env-record ()
+                        (eopl:error 'apply-env-ref "No binding for ~s" sym))
+      (extended-env-record (vars vals env)
+                           (let ((pos (encontrar-en-vars sym vars)))
+                             (if (number? pos)
+                                 (cases variable (list-ref vars pos)
+                                   (mutable (id) #t)
+                                   (inmutable (id) #f)
+                                 )
+                                 (mutable? sym env)
+                             )
+        )
+      )
+  )
+ )
+)
+(define apply-env-ref
+  (lambda (env sym)
+    (cases environment env
+      (empty-env-record ()
+                        (eopl:error 'apply-env-ref "No existe la variable ~s" sym))
+      (extended-env-record (vars vals env)
+                           (let ((pos (encontrar-en-vars sym vars)) (mut (buscar-muta sym vars 0)) )
+                             (if (and (number? pos) (symbol? mut) )
+                                 (refere pos vals mut)
+                                 (apply-env-ref env sym)))))))
+(define target-ref-directo?
+  (lambda (x)
+    (and (reference? x)
+         (cases reference x
+           (refere (pos vec mut)
+                  ( if  (not (reference?  (vector-ref vec pos) ) )  #t #f ))))))
+(define cambiarRef!
+  (lambda (ref val)
+    (if (target? ref)
+        (cases target ref
+          (indirect-target (valorRef) (primitive-cambiaRef! valorRef val))
+        )
+        (primitive-cambiaRef! ref val)
+    )
+  )
+)
+(define primitive-cambiaRef!
+     (lambda (ref val)
+       (cases reference ref
+         (refere (pos vec mut) (vector-set! vec pos val))
+       )
+     )
+    )
+
+;función que retorna una lista de los números desde 0 hasta end
+(define numsCien
+  (lambda (end)
+    (let loop ((next 0))
+      (if (>= next end) '()
+        (cons next (loop (+ 1 next)))))))
+
+;; ENCONTRAR EL SIMBOLO EN UNA LISTA DE VARIABLES
+(define encontrar-en-vars
+  (lambda (sym vars)
+    (buscar-en-vars sym vars 0)
+  )
+)
+;; AUX SEARCH SIMBOLO EN LISTA DE VARIABLES
+(define buscar-en-vars
+  (lambda (sym vars pos)
+    (cond
+      ( (null? vars) #f)
+      ( (equal? sym (id-variable (car vars))) pos )
+      ( else (buscar-en-vars sym (cdr vars) (+ pos 1)) )
+    )
+  )
+)
+
+;; RETORNA SI LA VARIABLE ES MUTABLE O INMUTABLE
+(define buscar-muta
+  (lambda (sym vars pos)
+    (cond
+      ( (null? vars) #f)
+      ( (equal? sym (id-variable (car vars))) (cases variable (car vars) (mutable (id) 'M) (inmutable (id) 'I) )  )
+      ( else (buscar-muta sym (cdr vars) (+ pos 1)) )
+    )
+  )
+)
+
+;;deref retorna el valor de la referencia en el vector
+(define ref-val
+  (lambda (ref)
+    (cases reference ref
+      (refere (pos vals mut) 
+        (if (target? (vector-ref vals pos))
+           (cases target (vector-ref vals pos)
+              (indirect-target (valorRe) (primitive-refval valorRe))
+           )
+          (primitive-refval ref)
+        )
+      )
+    )       
+  )
+)
+(define primitive-refval
+  (lambda (ref)
+    (cases reference ref
+      (refere (pos vec mut)
+             (vector-ref vec pos)
+      )
+    )
+  )
+)
+
+;; RETORNAR EL SIMBOLO DE LA VARIABLE
+(define id-variable
+  (lambda (var)
+    (cases variable var
+      (mutable (id) id)                             
+      (inmutable (id) id)
+    )
+  )
+)
 (interpretador)
