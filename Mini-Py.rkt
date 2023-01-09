@@ -7,29 +7,122 @@
 ; Link github: https://github.com/JoseBecerra02/Proyecto-final-FLP
 
 ;<programa> :=  <expresion>
-;               un-programa (exp)
-;<expresion> := <numero>
-;               numero-lit (num)
-;            := "\""<texto> "\""
-;               texto-lit (txt)
-;            := <boolExp>
-;               bool-lit (bool)
-;            := <identificador>
-;               var-exp (id)
+;               un-programa 
+;<expresion> := <number>
+;               lit-exp 
+;            := '<texto> '
+;               txt-exp 
+;            := <expr-bool>
+;               boolean-exp 
+;            := <identifier>
+;               var-exp 
 ;            := (<expresion> <primitiva-binaria> <expresion>)
-;               primapp-bin-exp (exp1 prim-binaria exp2)
+;               primapp-bin-exp 
 ;            := <primitiva-unaria> (<expresion>)
-;               primapp-un-exp (prim-unaria exp)
-;<primitiva-binaria> :=  + (primitiva-suma)
-;                    :=  ~ (primitiva-resta)
-;                    :=  / (primitiva-div)
-;                    :=  * (primitiva-multi)
-;                    :=  concat (primitiva-concat)
+;               primapp-un-exp 
+;            := var {  <identifier> = <identifier> }*(,) in <expression>
+;               var-exp
+;            := const {  <identifier> = <identifier> }*(,) in <expression>
+;               const-exp
+;            := rec { <identifier> ({ <identifier> } *(,) } = <expression> }* in <expression>
+;               rec-exp
+;            :=( <base> ( <expression> )* )
+;               hexa-exp
+;            := set <identifier> = <expression>
+;               set-exp
+;            := [ ( <expression> )* ]
+;               list-exp
+;            := tupla [ ( <expression> )* ]
+;               tupla-exp
+;            := { ( <expression> )* }
+;               registro-exp
+;            := print ( <expression> )
+;                print-exp
+;            := vacio
+;               primitiva-vacio
+;            := crear-lista ( ( <expression> )*(,) )
+;               primitiva-crear-lista
+;            := ref-list ( <expression> , <number> )
+;               primitiva-ref-list
+;            := crear-tupla ( <expression> , <expression> )
+;               primitiva-crear-tupla
+;            := begin {( <expression> )*(,) } end
+;               begin-exp
+;            := if <expression> then  <expression> [ else <expression ] end
+;               condicional-exp
+;            := while <expression>  do <expression> done
+;               while-exp
+;            := for <identifier> = <expression> <to-down-exp> <expression> do <expression> done
+;               for-exp
+;<to-down-exp>:= to
+;                to-exp
+;             := down
+;                down-exp
+;<expr-bool> :=<boolean>
+;               booleano (bool)
+;            :=  <oper-un-bool> (<expression>)
+;               una-bool-exp 
+;            := <oper-bin-bool> ( <expression> , <expression> )
+;               bin-bool-exp 
+;            := <pred-prim> ( <expression> , <expression> )
+;               pred-bool-exp 
+;<boolean>:= true
+;             true-boolean 
+;         := false
+;             false-boolean 
+;<oper-un-bool>:= not
+;                  not-bool-prim 
+;<oper-bin-bool>:=  and
+;                  or-bool-prim
+;               :=  or
+;                  and-bool-prim 
+;<pred-prim>:= <
+;               less-prim 
+;            := >
+;               more-prim 
+;            := ==
+;               equal-prim 
+;            := <>
+;               unequal-prim
+;            := >=
+;               more-equal-prim 
+;            := <=
+;               less-equal-prim 
+;<primitiva>         :=  +
+;                      primitiva-suma
+;                    :=  ~
+;                      primitiva-resta
+;                    :=  /
+;                      primitiva-div
+;                    :=  *
+;                      primitiva-multi
+;                    :=  concat
+;                      primitiva-concat
+;                    :=  append
+;                      primitiva-append
 ;
-;<primitiva-unaria>:=  longitud (primitiva-longitud)
-;                  :=  add1 (primitiva-add1)
-;                  :=  sub1 (primitiva-sub1)
-
+;<primitive-un> :=  longitud
+;                   primitiva-longitud
+;               :=  add1
+;                   primitiva-add1
+;               :=  sub1
+;                   primitiva-sub1
+;               :=  vacio?
+;                   primitiva-vacio?
+;               :=  lista?
+;                   primitiva-lista?
+;               :=  registro?
+;                   primitiva-registro?
+;               :=  cabeza
+;                   primitiva-cabeza
+;               :=  cola
+;                   primitiva-cola
+;               :=  set-list
+;                   primitiva-set-list
+;               := set-registro
+;                  primitiva-set-registro
+;               :=  tupla?
+;                   primitiva-tupla?
 ;Especificación Léxica
 
 (define scanner-spec-simple-interpreter
@@ -50,7 +143,9 @@
   
   (text ("'" (arbno (or digit letter whitespace)) "'") string)
 
-  (base ("x" (arbno whitespace) digit (arbno digit)) string)  
+  (base ("x" (arbno whitespace) digit (arbno digit)) string)
+
+  (exprez  ((or "1" "2" "3" "4" "5" "6" "7" "8"  "9" "A" "B" "C" "D" "E" "F" ))  string)
  )
 )
 
@@ -87,10 +182,7 @@
     (expr-bool (oper-un-bool "(" expression")") una-bool-exp)
     (expr-bool (oper-bin-bool "(" expression "," expression")") bin-bool-exp)
     (expr-bool (pred-prim "(" expression "," expression ")") pred-bool-exp)
-
-    ;;Print
-    (expression ("print("expression")") print-exp)
-    
+   
     (boolean ("true") true-boolean)
     (boolean ("false") false-boolean)
 
@@ -122,6 +214,10 @@
     ;;Prima
     (expression ("(" expression primitive expression ")") primapp-bin-exp)
     (expression (primitive-un "(" expression ")") primapp-un-exp)
+    
+    
+    ;;Print
+    (expression ("print" "("expression")") print-exp)
 
     
     ;;Primitivas aritmeticas para enteros
@@ -148,6 +244,17 @@
     (primitive ("append") primitiva-append)
     (expression ("ref-list" "(" expression "," number ")") primitiva-ref-list)
     (primitive-un ("set-list") primitiva-set-list)
+
+    ;;Primitivas sobre tuplas
+    (expression ("crear-tupla" "(" expression "," expression ")") primitiva-crear-tupla)
+    (primitive-un ("tupla?") primitiva-tupla?)
+    (expression ("ref-tupla" "(" expression "," number ")") primitiva-ref-tuple)
+
+    ;;Primitivas sobre tuplas
+    (expression ("crear-registro" "(" (separated-list identifier "=" expression ",") ")") primitiva-crear-registro)
+    (primitive-un ("registro?") primitiva-registro?)
+    (primitive-un ("set-registro") primitiva-set-registro)
+    (expression ("ref-registro" "(" expression "," number ")") primitiva-ref-registro)
     
 
     ;;Estructura begin
@@ -234,7 +341,7 @@
       
       (lit-exp (num) num)
 
-      (hexa-exp (base lista) (creacion-hexa base lista env))
+      (hexa-exp (base lista) (bignum env (map  (lambda(x) (convertidor x) ) lista) (string->number (remove-spaces (cdr (string->list base)))) (- (length lista) 1) ))
       
       (boolean-exp (expres-bool) (creacion-bool expres-bool env))
 
@@ -255,6 +362,14 @@
       (primitiva-crear-lista (num) (creacion-listas num env))
 
       (primitiva-ref-list (num index) (list-set-aux (eval-expression num env) index))
+
+      (primitiva-crear-tupla (exp1 exp2) (creacion-tuplas exp1 exp2 env))
+
+      (primitiva-ref-tuple (num index) (tupla-set-aux (eval-expression num env) index))
+
+      (primitiva-crear-registro (identificadores registros) (creacion-registros identificadores registros env))
+
+      (primitiva-ref-registro (num index) (list-set-aux (eval-expression num env) index))
       
       (condicional-exp (test-exp true-exp false-exp) (creacion-if test-exp true-exp false-exp env))
 
@@ -312,9 +427,20 @@
       (primitiva-cabeza () (car num))
       (primitiva-cola () (cdr num))
       (primitiva-set-list () (set-list num))
+      (primitiva-tupla? () (pair? num))
+      (primitiva-registro? () (isregistro num))
+      (primitiva-set-registro () (set-register num))
      ))
     )
-
+(define isregistro
+  (lambda (lista)
+    (cond
+      ((null? lista) #t)
+      ((and (list? (car lista)) (symbol? (caar lista)) (eqv?  (cadr (car lista)) '=) (eqv? (length (car lista)) 3 )) (isregistro (cdr lista)))
+      (else #f)
+      )
+    )
+  )
 
 ;true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
 (define true-value?
@@ -469,12 +595,7 @@
 
 (define creacion-tuplas
   (lambda (expre1 expre2 env)
-    (cond
-      ((null? expre1) empty)
-      (else
-       (cons (eval-expression expre1 env) (eval-expression expre2 env))
-       )
-      )
+    (cons (eval-expression expre1 env) (eval-expression expre2 env))
     )
   )
 
@@ -570,28 +691,76 @@
 )
 
 ;;Aux
+(define convertidor
+  (lambda  (elem)
+    (cond
+      ((equal? elem "A") 10)
+      ((equal? elem "B") 11)
+      ((equal? elem "C") 12)
+      ((equal? elem "D") 13)
+      ((equal? elem "E") 14)
+      ((equal? elem "F") 15)
+      ((< (string->number elem) 10) (string->number elem))
+      )
+    )
+  )
+(define bignum
+  (lambda(env lista base largo)
+    (cond
+      ((= largo 0) (car lista) )
+      (else (+  (* (car lista)  ( expt base largo)) (bignum env (cdr lista) base (- largo  1)) ))
+      )
+    )
+  )
 (define list-set-aux
   (lambda (L n)
     (cond
+      [(> n (- (length L) 1)) (eopl:error "Estas accediendo a una posicion que no existe" )]
       [(= 0 n) (car L)]
       [else (list-set-aux (cdr L) (- n 1))]
       )
     )
   )
+(define tupla-set-aux
+  (lambda (L n)
+    (cond
+      [(= 0 n) (car L)]
+      [(= 1 n) (cdr L)]
+      [else (eopl:error  "Estas accediendo a una posicion que no existe en la tupla")]
+      )
+    )
+  )
+
 
 (define (set-list num)
   (cond
     ((null? num) num)
-    ((miembro? (car num) (cdr num)) (set-list (cdr num)))
+    ((existe? (car num) (cdr num)) (set-list (cdr num)))
     (else (cons (car num) (set-list (cdr num)))))
   )
 
-(define (miembro? x Lista1)
+(define existe?
+  (lambda (x Lista1)
   (if (null? Lista1)
       #f
       (if (eq? x (car Lista1))
           #t
-          (miembro? x (cdr Lista1)))))
+          (existe? x (cdr Lista1))))))
+
+(define (set-register num)
+  (cond
+    ((null? num) num)
+    ((existe-register? (car (car num)) (cdr num)) (set-register (cdr num)))
+    (else (cons (car num) (set-register (cdr num)))))
+  )
+
+(define existe-register?
+  (lambda (x Lista1)
+  (if (null? Lista1)
+      #f
+      (if (eq? x (car (car Lista1)))
+          #t
+          (existe-register? x (cdr Lista1))))))
 
 (define mutable?
   (lambda (sym env)
@@ -710,7 +879,7 @@
 (define id-variable
   (lambda (var)
     (cases variable var
-      (mutable (id) id)
+      (mutable (id) id)                             
       (inmutable (id) id)
     )
   )
