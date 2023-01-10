@@ -144,8 +144,6 @@
   (text ("'" (arbno (or digit letter whitespace)) "'") string)
 
   (base ("x" (arbno whitespace) digit (arbno digit)) string)
-
-  (exprez  ((or "1" "2" "3" "4" "5" "6" "7" "8"  "9" "A" "B" "C" "D" "E" "F" ))  string)
  )
 )
 
@@ -158,6 +156,7 @@
     ;;Declarar variables y constantes
     (expression ("var" (separated-list identifier "=" expression ",") "in" expression) variable-exp)
     (expression ("const" (separated-list identifier "=" expression ",") "in" expression) constante-exp)
+    (expression ("rec" "{" (separated-list identifier "{" (separated-list identifier ",") "}" "=" expression ";") "}" "in" expression) recursivo-exp)
 
     
     ;;Identificador 
@@ -267,7 +266,13 @@
     
     ;;Estructura while 
     (expression ("while" expression "do" expression "done") while-exp)
+
+    ;;Procedimiento
+    (expression ("procedimiento" "("(separated-list identifier ",") ")" "{" expression "}") procedimiento-exp)
     
+    ;;Estructura de evaluacion
+    (expression ("evaluar" expression "("  (separated-list expression ",") ")" "finEval") evaluar-exp)
+
     
     ;;Estructura for
     (expression ("for" identifier "=" expression to-down-exp expression "do" expression "done") for-exp)
@@ -341,7 +346,7 @@
       
       (lit-exp (num) num)
 
-      (hexa-exp (base lista) (bignum env (map  (lambda(x) (convertidor x) ) lista) (string->number (remove-spaces (cdr (string->list base)))) (- (length lista) 1) ))
+      (hexa-exp (base lista)(bignum env (map  (lambda(x) (convertidor x env) ) lista) (string->number (remove-spaces (cdr (string->list base)))) (- (length lista) 1) ))
       
       (boolean-exp (expres-bool) (creacion-bool expres-bool env))
 
@@ -373,6 +378,10 @@
       
       (condicional-exp (test-exp true-exp false-exp) (creacion-if test-exp true-exp false-exp env))
 
+      (evaluar-exp (expr args) (creacion-eval-exp expr args env))
+
+      (procedimiento-exp  (ids body) (evaluacion-expresiones-procedure ids body env))
+
       (begin-exp (exp exps) (creacion-begin exp exps env))
 
       (while-exp (exp-cond exp-do) (creacion-while exp-cond exp-do env))
@@ -380,6 +389,8 @@
       (for-exp (ident exp-cond to-down-exp exp-cond-final exp-do) (creacion-for ident exp-cond to-down-exp exp-cond-final exp-do env))
 
       (set-exp (id exp) (creacion-set id exp env))
+
+      (recursivo-exp  (procs idss bodies principalBody) (creacion-proc-recursivos procs idss bodies principalBody env))
       
       )
 
@@ -473,7 +484,8 @@
   (lambda (proc args)
     (cases procVal proc
       (cerradura (ids body env)
-               (eval-expression body (extend-env ids args env))))))
+               (eval-expression body (extend-env  (definir-mutabilidad ids args) args env)
+                                )))))
 
 (define-datatype variable variable?
   (mutable (id symbol?))
@@ -690,20 +702,38 @@
   )
 )
 
+
 ;;Aux
 (define convertidor
-  (lambda  (elem)
+  (lambda  (elem env)
     (cond
-      ((equal? elem "A") 10)
-      ((equal? elem "B") 11)
-      ((equal? elem "C") 12)
-      ((equal? elem "D") 13)
-      ((equal? elem "E") 14)
-      ((equal? elem "F") 15)
-      ((< (string->number elem) 10) (string->number elem))
+      ( (and (number? (eval-expression elem env))
+             (< (eval-expression elem env) 10)) (eval-expression elem env))
+
+      ( (and
+         (string? (eval-expression elem env))
+         (or
+            (equal? (eval-expression elem env) "A")
+            (equal? (eval-expression elem env) "B")
+            (equal? (eval-expression elem env) "C")
+            (equal? (eval-expression elem env) "D")
+            (equal? (eval-expression elem env) "E")
+            (equal? (eval-expression elem env) "F")
+          )
+         )
+           (cond
+             ((equal? (eval-expression elem env) "A") 10)
+             ((equal? (eval-expression elem env) "B") 11)
+             ((equal? (eval-expression elem env) "C") 12)
+             ((equal? (eval-expression elem env) "D") 13)
+             ((equal? (eval-expression elem env) "E") 14)
+             ((equal? (eval-expression elem env) "F") 15)
       )
-    )
-  )
+        )
+
+      (else (eopl:error "Este caracter no está disponible para hexadecimales"))
+  )))
+
 (define bignum
   (lambda(env lista base largo)
     (cond
@@ -762,6 +792,12 @@
           #t
           (existe-register? x (cdr Lista1))))))
 
+(define creacion-proc-recursivos
+  (lambda ( procs idss bodies principalBody env)
+    (eval-expression principalBody (extend-env-recursively procs idss bodies env))
+  )
+)
+
 (define mutable?
   (lambda (sym env)
       (cases environment env
@@ -815,20 +851,18 @@
      )
     )
 
-;función que retorna una lista de los números desde 0 hasta end
 (define numsCien
   (lambda (end)
     (let loop ((next 0))
       (if (>= next end) '()
         (cons next (loop (+ 1 next)))))))
 
-;; ENCONTRAR EL SIMBOLO EN UNA LISTA DE VARIABLES
 (define encontrar-en-vars
   (lambda (sym vars)
     (buscar-en-vars sym vars 0)
   )
 )
-;; AUX SEARCH SIMBOLO EN LISTA DE VARIABLES
+
 (define buscar-en-vars
   (lambda (sym vars pos)
     (cond
@@ -839,7 +873,6 @@
   )
 )
 
-;; RETORNA SI LA VARIABLE ES MUTABLE O INMUTABLE
 (define buscar-muta
   (lambda (sym vars pos)
     (cond
@@ -850,7 +883,6 @@
   )
 )
 
-;;deref retorna el valor de la referencia en el vector
 (define ref-val
   (lambda (ref)
     (cases reference ref
@@ -875,7 +907,6 @@
   )
 )
 
-;; RETORNAR EL SIMBOLO DE LA VARIABLE
 (define id-variable
   (lambda (var)
     (cases variable var
@@ -884,4 +915,42 @@
     )
   )
 )
-(interpretador)
+
+(define evaluacion-expresiones-procedure
+  (lambda (ids body env)
+    (cerradura ids body env)
+  )
+)
+(define creacion-eval-exp
+  (lambda (expr args env)
+    (let (
+        (proc (eval-expression expr env))
+          (argumentos  (creacion-listas args env))
+         )  
+         (if (procVal? proc)
+                     (apply-procedure proc argumentos)
+                     (eopl:error 'eval-expression
+                                 "Attempt to apply non-procedure ~s" proc))
+      )
+  )
+)
+
+(define definir-mutabilidad
+  (lambda (ids args)
+   (cond
+     ((null? ids) empty)
+     (else   (if (target? (car args))
+                 (cases target (car args)
+                              (indirect-target (ref) (cases reference ref (refere (pos vec mut)
+                                                                                 (if (equal? mut 'M)
+                                                                                     (cons (mutable (car ids)) (definir-mutabilidad (cdr ids) (cdr args)) )
+                                                                                     (cons (inmutable (car ids)) (definir-mutabilidad (cdr ids) (cdr args))  )) )))
+                              )
+                  (cons (mutable (car ids)) (definir-mutabilidad (cdr ids) (cdr args)))
+       )
+     )
+   )
+  )
+)
+
+(interpretador) 
